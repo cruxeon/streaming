@@ -191,7 +191,8 @@ static int encode_write_frame(AVFrame *frame, unsigned int stream_index, int *go
     av_packet_rescale_ts(&enc_pkt,
                             ofmt_ctx->streams[stream_index]->codec->time_base,
                             ofmt_ctx->streams[stream_index]->time_base);
-    char *msg = "hello";
+    
+    unsigned char msg[5] = "hello";
      
     //Write SEI NAL unit
     h264_stream_t* h = h264_new();
@@ -201,10 +202,13 @@ static int encode_write_frame(AVFrame *frame, unsigned int stream_index, int *go
 
     h->sei->payloadType = SEI_TYPE_USER_DATA_UNREGISTERED;
     h->sei->payloadSize = 5;
-    h->sei->payload = (uintptr_t)*msg;
+    h->sei->payload = msg;
 
-    //TODO: figure out buf and size
-    //int len = write_nal_unit(h, buf, size);
+    unsigned int size = 1000;
+    unsigned char buf[size];
+    int len = write_nal_unit(h, buf, size);
+    av_log(NULL, AV_LOG_DEBUG, "size written: %d\n", len);
+
 
     //Mux encoded frame
     //av_log(NULL, AV_LOG_INFO, "Muxing frame\n");
