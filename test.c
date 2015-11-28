@@ -112,10 +112,26 @@ static int open_output_file(const char *filename) {
                 enc_ctx->gop_size = 10;
                 enc_ctx->qmin = 10;
                 enc_ctx->qmax = 51;
-
+                
+                
+                /*//TODO: TESTING -- remove if wrong
+                if (enc_ctx->priv_data != NULL) {
+                    av_log(NULL, AV_LOG_ERROR, "Priv data is NOT null, setting NULL now!\n");
+                    enc_ctx->priv_data = NULL;
+                } else {
+                    av_log(NULL, AV_LOG_ERROR, "Priv is already NULL\n");
+                }*/
+                
                 if (dec_ctx->codec_id == AV_CODEC_ID_H264) {
-                    av_opt_set(enc_ctx->priv_data, "preset", "slow", 0);
+                    av_opt_set(enc_ctx, "preset", "slow", 0);
                 }
+                
+                /*if (enc_ctx->priv_data != NULL) {
+                    av_log(NULL, AV_LOG_ERROR, "AFTER: Priv data is NOT null\n");
+                } else {
+                    av_log(NULL, AV_LOG_ERROR, "AFTER: Priv is NULL\n");
+                }*/
+
             }
             
             ret = avcodec_open2(enc_ctx, encoder, NULL);
@@ -179,8 +195,95 @@ static int encode_write_frame(AVFrame *frame, unsigned int stream_index, int *go
     enc_pkt.data = NULL;
     enc_pkt.size = 0;
     av_init_packet(&enc_pkt);
+    
+   
+    //Write SEI NAL unit
+    h264_stream_t* h = h264_new();
+    
+    unsigned char msg[5] = "hello";
+    
+    h->nal->nal_ref_idc = NAL_REF_IDC_PRIORITY_HIGHEST;
+    h->nal->nal_unit_type = NAL_UNIT_TYPE_SEI;
+
+    h->num_seis = 1;
+    h->seis = (sei_t**)realloc(h->seis, h->num_seis * sizeof(sei_t*));
+
+    unsigned int i;
+    for (i = 0; i < h->num_seis; i++) {
+
+        sei_t* s = sei_new();
+        s->payloadType = SEI_TYPE_USER_DATA_UNREGISTERED;
+        s->payloadSize = 5;
+        s->payload = msg;
+
+        h->seis[i] = s;
+    }
+
+    /*
+    unsigned int size = 1000;
+    unsigned char buf[size];
+    
+    int len = write_nal_unit(h, buf, size);
+    */
+    
+    int len = 12;
+    unsigned char buf[] ="\x00\x00\x01\x06\x05\x05hello\x80";
+    //printf("SIZE OF BUF IS: %d\n",sizeof(buf));
+    unsigned char *buf2 = (unsigned char *)malloc(sizeof(char)*len);
+    for (i=0;i<len;i++) {
+        buf2[i] = buf[i];
+    }
+
+
+
+    //X264Context *p = ofmt_ctx->streams[stream_index]->codec->priv_data;
+    //p->sei_size = len;
+    //p->sei = buf;
+    
+    memcpy(ofmt_ctx->streams[stream_index]->codec->priv_data + 1192 , &buf2, sizeof(uint8_t *));
+    memcpy(ofmt_ctx->streams[stream_index]->codec->priv_data + 1200 , &len, sizeof(int));
+    //av_log(NULL, AV_LOG_ERROR, "size written: %d\n", len);
+
+    /* 
+    printf("~~~~~~~~~1~~~~~~~~~~~\n");
+    char* buf_str = (char*) malloc (2*len + 1); 
+    char* buf_ptr = buf_str;
+    for (i = 0; i < len; i++)
+    {   
+        buf_ptr += sprintf(buf_ptr, "%02X", buf[i]);
+    }   
+    sprintf(buf_ptr,"\n");
+    *(buf_ptr + 1) = '\0';
+    printf("%s\n", buf_str);
+
+    printf("~~~~~~~~~~1~~~~~~~~~~\n");
+    
+    printf("~~~~~~~~~2~~~~~~~~~~~\n");
+    buf_str = (char*) malloc (2*len + 1); 
+    buf_ptr = buf_str;
+    for (i = 0; i < len; i++)
+    {   
+        buf_ptr += sprintf(buf_ptr, "%02X", buf2[i]);
+    }   
+    sprintf(buf_ptr,"\n");
+    *(buf_ptr + 1) = '\0';
+    printf("%s\n", buf_str);
+
+    printf("~~~~~~~~~~2~~~~~~~~~~\n");
+    */
+     
+    /*
+    if (ofmt_ctx->streams[stream_index]->codec->priv_data->sei_size == NULL) {
+        av_log(NULL, AV_LOG_ERROR, "no SEI in PRIV_DATA is null\n");
+    } else {
+        av_log(NULL, AV_LOG_ERROR, " yes sei data OMG THERE IS PRIV_DATA\n");
+    }*/
+
     ret = avcodec_encode_video2(ofmt_ctx->streams[stream_index]->codec, &enc_pkt,
                                     frame, got_frame);
+
+
+    
     if (ret < 0)
         return ret;
     if (!(*got_frame))
@@ -192,22 +295,8 @@ static int encode_write_frame(AVFrame *frame, unsigned int stream_index, int *go
                             ofmt_ctx->streams[stream_index]->codec->time_base,
                             ofmt_ctx->streams[stream_index]->time_base);
     
-    unsigned char msg[5] = "hello";
      
-    //Write SEI NAL unit
-    h264_stream_t* h = h264_new();
-
-    h->nal->nal_ref_idc = NAL_REF_IDC_PRIORITY_HIGHEST;
-    h->nal->nal_unit_type = NAL_UNIT_TYPE_SEI;
-
-    h->sei->payloadType = SEI_TYPE_USER_DATA_UNREGISTERED;
-    h->sei->payloadSize = 5;
-    h->sei->payload = msg;
-
-    unsigned int size = 1000;
-    unsigned char buf[size];
-    int len = write_nal_unit(h, buf, size);
-    av_log(NULL, AV_LOG_DEBUG, "size written: %d\n", len);
+   
 
 
     //Mux encoded frame
@@ -228,7 +317,7 @@ static int flush_encoder(unsigned int stream_index) {
     
     while (1) {
 
-        av_log(NULL, AV_LOG_INFO, "Flushing stream #%u encoder\n", stream_index);
+        //av_log(NULL, AV_LOG_INFO, "Flushing stream #%u encoder\n", stream_index);
         ret = encode_write_frame(NULL, stream_index, &got_frame);
         if (ret < 0)
             break;
@@ -265,7 +354,6 @@ int main(int argc, char **argv) {
 
     if ((ret = open_output_file(argv[2])) < 0)
         goto end;
-    
     
     //Read all packets
     while (1) {
