@@ -14,10 +14,9 @@ CFLAGS := $(shell pkg-config --cflags $(FFMPEG_LIBS)) $(CFLAGS)
 LDLIBS := $(shell pkg-config --libs $(FFMPEG_LIBS) $(H264_LIBS)) $(LDLIBS)
 LDLIBS += -lm
 
-EXAMPLES=       open                       \
-		streamVid                  \
-		test		           \
-		frame_add_data	           \
+EXAMPLES=       open                    \
+		test		        \
+		frame_add_data	        \
 
 OBJS=$(addsuffix .o,$(EXAMPLES))
 
