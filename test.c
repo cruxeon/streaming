@@ -77,7 +77,7 @@ static int open_output_file(const char *filename) {
         return AVERROR_UNKNOWN;
 
     
-    for (i = 0; i < ifmt_ctx->nb_streams; i++) {
+    for (i = 0; i < ifmt_ctx->nb_streams + 1; i++) {        //Change to number of streams!! <pre-defined>   ... +1 for greyscale
         
         //Allocating output stream for each input stream   
         out_stream = avformat_new_stream(ofmt_ctx, NULL);
@@ -86,7 +86,13 @@ static int open_output_file(const char *filename) {
             return AVERROR_UNKNOWN;
         }
 
-        in_stream = ifmt_ctx->streams[i];
+        //hack for now... TODO: make a standard configuration
+        if (i < ifmt_ctx->nb_streams) {
+            in_stream = ifmt_ctx->streams[i];
+        } else {
+            in_stream = ifmt_ctx->streams[0];
+        }
+        
         dec_ctx = in_stream->codec;
         enc_ctx = out_stream->codec;
 
@@ -298,10 +304,16 @@ int main(int argc, char **argv) {
             //Encoding video frames
             if (got_frame) {
                 frame->pts = av_frame_get_best_effort_timestamp(frame);
-                ret = encode_write_frame(frame, stream_index, NULL);
+
+                int ret1, ret2;
+                ret1 = encode_write_frame(frame, stream_index, NULL);
+                ret2 = encode_write_frame(frame, ifmt_ctx->nb_streams, NULL);
+                
                 av_frame_free(&frame);
-                if (ret < 0)
+                if (ret1 < 0 || ret2 < 0) {
+                    ret = -1;
                     goto end;
+                }
             } else {
                 av_frame_free(&frame);
             }
