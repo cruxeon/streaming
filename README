@@ -1,0 +1,9 @@
+usage:
+
+Transcoding input video with custom SEI and transmitting:
+./test sample.mp4 rtsp://localhost:8888/live.sdp
+
+
+Receiving Transmitted Video:
+ffplay -rtsp_flags listen -i rtsp://localhost:8888/live.sdp
+
