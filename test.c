@@ -4,7 +4,6 @@
 #include <libavutil/opt.h>
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
-#include <h264_stream.h>
 
 
 
