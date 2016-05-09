@@ -8,11 +8,10 @@ Modified version of the FFMPEG transcoding sample to have multiple output stream
 
 #### Usage ####
 Transcoding input video with custom SEI and transmitting:
-> ./test <input_video> <output_location>
-> ./test sample.mp4 rtsp://localhost:8888/live.sdp
+> ./test \<input_video> \<output_location>
 
-- input_video: location of video 
-- output_location: either a filename or rtsp url
+- input_video: location of video (= sample.mp4)
+- output_location: either a filename or rtsp url (url = rtsp://localhost:8888/live.sdp)
 
 Receiving Transmitted Video:
 > ffplay -rtsp_flags listen -i rtsp://localhost:8888/live.sdp
